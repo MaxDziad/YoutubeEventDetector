@@ -1,5 +1,6 @@
 from enum import Enum
 import videoExtensions
+import cv2
 
 
 class State(Enum):
@@ -19,12 +20,16 @@ class VideoStateMachine:
 
     previous_frame = None
     next_frame = None
+    is_full_screen = False
 
     current_contour = None
-    height_bar_y = -1
+    youtube_bar_image = None
+    height_bar_y = float('-inf')
+    scroll_bar_bottom_edge = float('inf')
 
     # references
-    has_height_bar = height_bar_y != -1
+    has_height_bar = height_bar_y != float('-inf')
+    has_scroll_bar = scroll_bar_bottom_edge != float('inf')
 
     def __init__(self):
         self.current_state = State.LOOKING_FOR_VIDEO
@@ -58,11 +63,42 @@ class VideoStateMachine:
             self.change_state(State.LOADING_VIDEO)
 
     def wait_for_video_to_load(self):
-        height_bar_y = videoExtensions.try_get_bar_height(self.previous_frame, self.current_contour)
-        scroll_bar_down_edge = videoExtensions.find_bottom_scroll_bar_point(self.previous_frame, self.FRAME_HEIGHT, self.FRAME_WIDTH)
+        self.try_look_for_bar()
+        self.make_scroll_bar_check()
 
     def look_for_interruptions(self):
         return 0
 
     def look_for_continuation(self):
         return 0
+
+    def try_look_for_bar(self):
+        if not self.has_height_bar:
+            self.height_bar_y = videoExtensions.try_get_bar_height(self.previous_frame, self.current_contour)
+
+        youtube_bar_image = videoExtensions.get_youtube_bar_image(self.previous_frame,
+                                                                  self.current_contour,
+                                                                  self.height_bar_y)
+
+        if youtube_bar_image is not None:
+            cv2.imshow("bar image", youtube_bar_image)
+
+    def make_scroll_bar_check(self):
+        current_scroll_bar_bottom_edge = videoExtensions.find_bottom_scroll_bar_point(self.previous_frame,
+                                                                                      self.FRAME_HEIGHT,
+                                                                                      self.FRAME_WIDTH)
+
+        if not self.has_scroll_bar:
+            self.scroll_bar_bottom_edge = current_scroll_bar_bottom_edge
+        elif current_scroll_bar_bottom_edge != self.scroll_bar_bottom_edge:
+            scroll_difference = self.scroll_bar_bottom_edge - current_scroll_bar_bottom_edge
+            self.scroll_bar_bottom_edge = current_scroll_bar_bottom_edge
+            self.update_components_position(scroll_difference)
+
+    def update_components_position(self, difference):
+        if self.has_height_bar:
+            self.height_bar_y += difference
+
+        for point in self.current_contour:
+            point[0] += difference
+            point[1] += difference

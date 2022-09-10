@@ -18,11 +18,11 @@ def find_bottom_scroll_bar_point(frame, height, width):
         if not np.array_equal(previous_point, next_point):
 
             # DEBUG
-            cv2.circle(frame, [point_x, iy], 10, debug_color, -1)
+            # cv2.circle(frame, [point_x, iy], 10, debug_color, -1)
 
             return iy
 
-    return -1
+    return float('inf')
 
 
 def find_biggest_contour(frame):
@@ -45,11 +45,21 @@ def find_biggest_contour(frame):
     return max(all_contours, key=cv2.contourArea)
 
 
+def get_youtube_bar_image(frame, contour, bar_height):
+    min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
+
+    if bar_height > max_y or bar_height < min_y:
+        return None
+
+    bar_image = frame[bar_height:max_y, min_x:max_x]
+    return bar_image
+
+
 def simplify_contour(contour):
     ensured_contour = []
 
     for point in contour:
-        tuple_rem_point = remove_tuple_from_point(point)
+        tuple_rem_point = point[0]
         if not is_point_close_to_others(ensured_contour, tuple_rem_point, 5):
             ensured_contour.append([tuple_rem_point[0], tuple_rem_point[1]])
 
@@ -63,10 +73,6 @@ def is_point_close_to_others(point_list, new_point, dist_tres):
             return True
 
     return False
-
-
-def remove_tuple_from_point(point):
-    return point[0]
 
 
 def is_video_initializing(frame, contour):
@@ -117,7 +123,7 @@ def try_get_bar_height(frame, contour):
         if not np.array_equal(current_pixel, black) and are_pixels_inline_same(frame, current_pixel, center_x, y):
             return y
 
-    return -1
+    return float('-inf')
 
 
 def are_pixels_inline_same(frame, pixel, x_position, y_position):
