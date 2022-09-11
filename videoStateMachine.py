@@ -20,15 +20,16 @@ class VideoStateMachine:
 
     previous_frame = None
     next_frame = None
+
     is_full_screen = False
+    has_unpaused_symbol_in_bar = False
 
     current_contour = None
-    youtube_bar_image = None
-    height_bar_y = float('-inf')
+    yt_bar_y = float('-inf')
     scroll_bar_bottom_edge = float('inf')
 
     # references
-    has_height_bar = height_bar_y != float('-inf')
+    has_height_bar = yt_bar_y != float('-inf')
     has_scroll_bar = scroll_bar_bottom_edge != float('inf')
 
     def __init__(self):
@@ -73,15 +74,18 @@ class VideoStateMachine:
         return 0
 
     def try_look_for_bar(self):
+        yt_bar_pause_image = None
+
         if not self.has_height_bar:
-            self.height_bar_y = videoExtensions.try_get_bar_height(self.previous_frame, self.current_contour)
+            self.yt_bar_y = videoExtensions.try_get_yt_bar_height(self.previous_frame, self.current_contour)
 
-        youtube_bar_image = videoExtensions.get_youtube_bar_image(self.previous_frame,
-                                                                  self.current_contour,
-                                                                  self.height_bar_y)
+        if self.has_height_bar:
+            yt_bar_pause_image = videoExtensions.get_youtube_bar_image(self.previous_frame,
+                                                                       self.current_contour,
+                                                                       self.yt_bar_y)
 
-        if youtube_bar_image is not None:
-            cv2.imshow("bar image", youtube_bar_image)
+        if yt_bar_pause_image is not None:
+            self.has_unpaused_symbol_in_bar = videoExtensions.is_unpaused_symbol_in_bar(self.previous_frame)
 
     def make_scroll_bar_check(self):
         current_scroll_bar_bottom_edge = videoExtensions.find_bottom_scroll_bar_point(self.previous_frame,
@@ -97,7 +101,7 @@ class VideoStateMachine:
 
     def update_components_position(self, difference):
         if self.has_height_bar:
-            self.height_bar_y += difference
+            self.yt_bar_y += difference
 
         for point in self.current_contour:
             point[0] += difference

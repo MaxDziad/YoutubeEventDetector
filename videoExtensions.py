@@ -3,9 +3,9 @@ import numpy as np
 import cv2
 
 # global parameters
-black = [0, 0, 0]
-white = [255, 255, 255]
-debug_color = [0, 255, 0]
+BLACK = [0, 0, 0]
+WHITE = [255, 255, 255]
+DEBUG_COLOR = [0, 255, 0]
 
 
 def find_bottom_scroll_bar_point(frame, height, width):
@@ -25,7 +25,7 @@ def find_bottom_scroll_bar_point(frame, height, width):
     return float('inf')
 
 
-def find_biggest_contour(frame):
+def find_all_contours(frame):
     # applying gray scale
     modified_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -39,10 +39,20 @@ def find_biggest_contour(frame):
     # inverting colours
     modified_frame = 255 - modified_frame
 
-    all_contours = cv2.findContours(modified_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    all_contours = all_contours[0] if len(all_contours) == 2 else all_contours[1]
+    contours = cv2.findContours(modified_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = contours[0] if len(contours) == 2 else contours[1]
 
+    return contours
+
+
+def find_biggest_contour(frame):
+    all_contours = find_all_contours(frame)
     return max(all_contours, key=cv2.contourArea)
+
+
+def is_unpaused_symbol_in_bar(frame):
+    all_contours = find_all_contours(frame)
+    return len(all_contours) == 2
 
 
 def get_youtube_bar_image(frame, contour, bar_height):
@@ -51,7 +61,7 @@ def get_youtube_bar_image(frame, contour, bar_height):
     if bar_height > max_y or bar_height < min_y:
         return None
 
-    bar_image = frame[bar_height:max_y, min_x:max_x]
+    bar_image = frame[bar_height:max_y, min_x:min_x + 50]
     return bar_image
 
 
@@ -100,7 +110,7 @@ def is_contour_all_black(frame, contour, grid_size):
             point_y = int(min_y + iy * y_spacing)
             current_pixel = frame[point_y][point_x]
 
-            if not np.array_equal(current_pixel, black):
+            if not np.array_equal(current_pixel, BLACK):
                 possible_mouse_encounters += 1
 
                 if possible_mouse_encounters > 1:
@@ -112,7 +122,7 @@ def is_contour_all_black(frame, contour, grid_size):
     return True
 
 
-def try_get_bar_height(frame, contour):
+def try_get_yt_bar_height(frame, contour):
     min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
     contour_width = max_x - min_x
     center_x = min_x + int(contour_width / 2)
@@ -120,7 +130,7 @@ def try_get_bar_height(frame, contour):
     for y in range(max_y, min_y, -1):
         current_pixel = frame[y][center_x]
 
-        if not np.array_equal(current_pixel, black) and are_pixels_inline_same(frame, current_pixel, center_x, y):
+        if not np.array_equal(current_pixel, BLACK) and are_pixels_inline_same(frame, current_pixel, center_x, y):
             return y
 
     return float('-inf')
