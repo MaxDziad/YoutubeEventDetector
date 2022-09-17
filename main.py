@@ -4,8 +4,8 @@ from videoStateMachine import VideoStateMachine
 if __name__ == '__main__':
 
     # global parameters
-    video_path = "VideoSources/test4.mp4"
-    frame_reading_speed = 20
+    video_path = "VideoSources/test5.mp4"
+    frame_reading_speed = 10
     frame_count = 0
 
     # video reading

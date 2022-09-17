@@ -26,11 +26,9 @@ def find_bottom_scroll_bar_point(frame, height, width):
 
 
 def find_all_contours(frame):
-    # applying gray scale
-    modified_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # applying threshold
-    modified_frame = cv2.threshold(modified_frame, 0, 255, cv2.THRESH_BINARY)[1]
+    modified_frame = frame
+    modified_frame = apply_grayscale(modified_frame)
+    modified_frame = apply_threshold(modified_frame)
 
     # applying close morphology
     kernel = np.ones((111, 111), np.uint8)
@@ -43,6 +41,14 @@ def find_all_contours(frame):
     contours = contours[0] if len(contours) == 2 else contours[1]
 
     return contours
+
+
+def apply_grayscale(image):
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+
+def apply_threshold(image, min_thresh=0):
+    return cv2.threshold(image, min_thresh, 255, cv2.THRESH_BINARY)[1]
 
 
 def find_biggest_contour(frame):
@@ -134,6 +140,36 @@ def try_get_yt_bar_height(frame, contour):
             return y
 
     return float('-inf')
+
+
+def get_diff_between_frames(prev_frame, next_frame, contour=None):
+    prev_img = get_contour_img(prev_frame, contour) if contour is not None else prev_frame
+    next_img = get_contour_img(next_frame, contour) if contour is not None else next_frame
+
+    img_diff = cv2.absdiff(prev_img, next_img)
+    img_diff = apply_grayscale(img_diff)
+    img_diff = apply_threshold(img_diff, 20)
+
+    # DEBUG
+    cv2.imshow("lol", img_diff)
+    return img_diff
+
+
+def get_loading_sprite_place_image(frame, contour):
+    return get_contour_img(frame, contour, 0.1, 0.2)
+
+
+def get_contour_img(frame, contour, width_offset=1.0, height_offset=1.0):
+    min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
+    half_height = int((max_y - min_y) / 2)
+    half_width = int((max_x - min_x) / 2)
+
+    min_y += half_height - int(height_offset * half_height)
+    max_y += -half_height + int(height_offset * half_height)
+    min_x += half_width - int(width_offset * half_width)
+    max_x += -half_width + int(width_offset * half_width)
+
+    return frame[min_y:max_y, min_x:max_x]
 
 
 def are_pixels_inline_same(frame, pixel, x_position, y_position):

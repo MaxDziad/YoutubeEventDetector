@@ -28,6 +28,8 @@ class VideoStateMachine:
     yt_bar_y = float('-inf')
     scroll_bar_bottom_edge = float('inf')
 
+    watch_for_loading_circle = False
+
     # references
     has_height_bar = yt_bar_y != float('-inf')
     has_scroll_bar = scroll_bar_bottom_edge != float('inf')
@@ -64,6 +66,7 @@ class VideoStateMachine:
             self.change_state(State.LOADING_VIDEO)
 
     def wait_for_video_to_load(self):
+        videoExtensions.get_diff_between_frames(self.previous_frame, self.next_frame, self.current_contour)
         self.try_look_for_bar()
         self.make_scroll_bar_check()
 
@@ -97,7 +100,8 @@ class VideoStateMachine:
         elif current_scroll_bar_bottom_edge != self.scroll_bar_bottom_edge:
             scroll_difference = self.scroll_bar_bottom_edge - current_scroll_bar_bottom_edge
             self.scroll_bar_bottom_edge = current_scroll_bar_bottom_edge
-            self.update_components_position(scroll_difference)
+            # TBD - updating components position when scrolled
+            # self.update_components_position(scroll_difference)
 
     def update_components_position(self, difference):
         if self.has_height_bar:
