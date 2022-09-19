@@ -66,7 +66,7 @@ class VideoStateMachine:
             self.change_state(State.LOADING_VIDEO)
 
     def wait_for_video_to_load(self):
-        videoExtensions.get_diff_between_frames(self.previous_frame, self.next_frame, self.current_contour)
+        videoExtensions.has_loading_popup_appeared(self.previous_frame, self.next_frame, self.current_contour)
         self.try_look_for_bar()
         self.make_scroll_bar_check()
 

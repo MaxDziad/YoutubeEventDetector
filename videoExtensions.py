@@ -25,7 +25,7 @@ def find_bottom_scroll_bar_point(frame, height, width):
     return float('inf')
 
 
-def find_all_contours(frame):
+def find_all_hard_contours(frame):
     modified_frame = frame
     modified_frame = apply_grayscale(modified_frame)
     modified_frame = apply_threshold(modified_frame)
@@ -40,6 +40,40 @@ def find_all_contours(frame):
     contours = cv2.findContours(modified_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = contours[0] if len(contours) == 2 else contours[1]
 
+    # DEBUG
+    # cv2.imshow("lol", modified_frame)
+
+    return contours
+
+
+def find_all_contours(frame):
+    modified_frame = frame
+    modified_frame = apply_grayscale(modified_frame)
+    modified_frame = apply_threshold(modified_frame, 5)
+
+    contours = cv2.findContours(modified_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = contours[0] if len(contours) == 2 else contours[1]
+
+    # DEBUG
+    # cv2.imshow("lol", modified_frame)
+
+    return contours
+
+
+def find_all_smooth_contours(frame):
+    modified_frame = frame
+    modified_frame = apply_grayscale(modified_frame)
+    modified_frame = apply_threshold(modified_frame, 5)
+
+    #  dilation for noise and imperfections removal
+    modified_frame = cv2.dilate(modified_frame, None, iterations=4)
+
+    contours = cv2.findContours(modified_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = contours[0] if len(contours) == 2 else contours[1]
+
+    # DEBUG
+    # cv2.imshow("lol", modified_frame)
+
     return contours
 
 
@@ -52,12 +86,12 @@ def apply_threshold(image, min_thresh=0):
 
 
 def find_biggest_contour(frame):
-    all_contours = find_all_contours(frame)
+    all_contours = find_all_hard_contours(frame)
     return max(all_contours, key=cv2.contourArea)
 
 
 def is_unpaused_symbol_in_bar(frame):
-    all_contours = find_all_contours(frame)
+    all_contours = find_all_hard_contours(frame)
     return len(all_contours) == 2
 
 
@@ -142,21 +176,22 @@ def try_get_yt_bar_height(frame, contour):
     return float('-inf')
 
 
-def get_diff_between_frames(prev_frame, next_frame, contour=None):
+def get_img_diff_between_frames(prev_frame, next_frame, contour=None):
     prev_img = get_contour_img(prev_frame, contour) if contour is not None else prev_frame
     next_img = get_contour_img(next_frame, contour) if contour is not None else next_frame
-
     img_diff = cv2.absdiff(prev_img, next_img)
-    img_diff = apply_grayscale(img_diff)
-    img_diff = apply_threshold(img_diff, 20)
 
     # DEBUG
-    cv2.imshow("lol", img_diff)
+    # cv2.imshow("lol", img_diff)
     return img_diff
 
 
-def get_loading_sprite_place_image(frame, contour):
-    return get_contour_img(frame, contour, 0.1, 0.2)
+def has_loading_popup_appeared(prev_frame, next_frame, contour):
+    img_diff = get_img_diff_between_frames(prev_frame, next_frame)
+    img_diff = get_contour_img(img_diff, contour, 0.1, 0.2)
+    contours = find_all_smooth_contours(img_diff)
+
+    return True if len(contours) == 1 else False
 
 
 def get_contour_img(frame, contour, width_offset=1.0, height_offset=1.0):
@@ -164,12 +199,12 @@ def get_contour_img(frame, contour, width_offset=1.0, height_offset=1.0):
     half_height = int((max_y - min_y) / 2)
     half_width = int((max_x - min_x) / 2)
 
-    min_y += half_height - int(height_offset * half_height)
-    max_y += -half_height + int(height_offset * half_height)
-    min_x += half_width - int(width_offset * half_width)
-    max_x += -half_width + int(width_offset * half_width)
+    new_min_y = min_y + half_height - int(height_offset * half_height)
+    new_max_y = max_y - half_height + int(height_offset * half_height)
+    new_min_x = min_x + half_width - int(width_offset * half_width)
+    new_max_x = max_x - half_width + int(width_offset * half_width)
 
-    return frame[min_y:max_y, min_x:max_x]
+    return frame[new_min_y:new_max_y, new_min_x:new_max_x]
 
 
 def are_pixels_inline_same(frame, pixel, x_position, y_position):
