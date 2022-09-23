@@ -72,7 +72,7 @@ def find_all_smooth_contours(frame):
     contours = contours[0] if len(contours) == 2 else contours[1]
 
     # DEBUG
-    # cv2.imshow("lol", modified_frame)
+    cv2.imshow("lol", modified_frame)
 
     return contours
 
@@ -91,7 +91,7 @@ def find_biggest_contour(frame):
 
 
 def is_unpaused_symbol_in_bar(frame):
-    all_contours = find_all_hard_contours(frame)
+    all_contours = find_all_smooth_contours(frame)
     return len(all_contours) == 2
 
 
@@ -225,8 +225,9 @@ def are_pixels_inline_same(frame, pixel, x_position, y_position):
             possible_mouse_encounters += 1
 
         # DEBUG
-        # cv2.circle(frame, [right_x, y_position], 10, debug_color, -1)
-        # cv2.circle(frame, [left_x, y_position], 10, debug_color, -1)
+        # cv2.circle(frame, [right_x, y_position], 10, DEBUG_COLOR, -1)
+        # cv2.circle(frame, [left_x, y_position], 10, DEBUG_COLOR, -1)
+        # cv2.imshow("LOL", frame)
 
         if possible_mouse_encounters > 1:
             return False

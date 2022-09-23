@@ -1,6 +1,7 @@
 from enum import Enum
+
+import eventPrinter
 import videoExtensions
-import cv2
 
 
 class State(Enum):
@@ -17,6 +18,7 @@ class VideoStateMachine:
 
     # dynamic parameters
     current_state = None
+    current_time = None
 
     previous_frame = None
     next_frame = None
@@ -41,18 +43,19 @@ class VideoStateMachine:
         self.FRAME_WIDTH = width
         self.FRAME_HEIGHT = height
 
-    def run_current_state(self, previous_frame, next_frame):
+    def run_current_state(self, previous_frame, next_frame, time):
         self.previous_frame = previous_frame
         self.next_frame = next_frame
+        self.current_time = time
 
         match self.current_state:
             case State.LOOKING_FOR_VIDEO:
                 self.look_for_video()
             case State.LOADING_VIDEO:
                 self.wait_for_video_to_load()
-            case State.PLAYING_VIDEO():
+            case State.PLAYING_VIDEO:
                 self.look_for_interruptions()
-            case State.PAUSED_VIDEO():
+            case State.PAUSED_VIDEO:
                 self.look_for_continuation()
 
     def change_state(self, state):
@@ -63,32 +66,51 @@ class VideoStateMachine:
         self.current_contour = videoExtensions.simplify_contour(biggest_contour)
 
         if videoExtensions.is_video_initializing(self.previous_frame, self.current_contour):
+            eventPrinter.print_video_start_initializing(self.current_time)
             self.change_state(State.LOADING_VIDEO)
 
     def wait_for_video_to_load(self):
-        videoExtensions.has_loading_popup_appeared(self.previous_frame, self.next_frame, self.current_contour)
         self.try_look_for_bar()
         self.make_scroll_bar_check()
+        self.check_is_video_starting()
 
     def look_for_interruptions(self):
-        return 0
+        videoExtensions.has_loading_popup_appeared(self.previous_frame, self.next_frame, self.current_contour)
 
     def look_for_continuation(self):
         return 0
 
     def try_look_for_bar(self):
         yt_bar_pause_image = None
+        has_height_bar = self.yt_bar_y != float('-inf')
 
-        if not self.has_height_bar:
+        if not has_height_bar:
             self.yt_bar_y = videoExtensions.try_get_yt_bar_height(self.previous_frame, self.current_contour)
-
-        if self.has_height_bar:
+        else:
             yt_bar_pause_image = videoExtensions.get_youtube_bar_image(self.previous_frame,
                                                                        self.current_contour,
                                                                        self.yt_bar_y)
 
-        if yt_bar_pause_image is not None:
-            self.has_unpaused_symbol_in_bar = videoExtensions.is_unpaused_symbol_in_bar(self.previous_frame)
+        if yt_bar_pause_image is not None\
+                and videoExtensions.is_unpaused_symbol_in_bar(yt_bar_pause_image) \
+                and self.has_unpaused_symbol_in_bar is False:
+
+            eventPrinter.print_video_end_initializing(self.current_time)
+            self.has_unpaused_symbol_in_bar = True
+
+    def check_is_video_starting(self):
+        if self.has_unpaused_symbol_in_bar:
+            num_contours_threshold = 30
+
+            img_diff = videoExtensions.get_img_diff_between_frames(self.previous_frame,
+                                                                   self.next_frame,
+                                                                   self.current_contour)
+            contours = videoExtensions.find_all_contours(img_diff)
+
+            if len(contours) > num_contours_threshold:
+                eventPrinter.print_video_start_playing(self.current_time)
+                self.has_unpaused_symbol_in_bar = False
+                self.change_state(State.PLAYING_VIDEO)
 
     def make_scroll_bar_check(self):
         current_scroll_bar_bottom_edge = videoExtensions.find_bottom_scroll_bar_point(self.previous_frame,
