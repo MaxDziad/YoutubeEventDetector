@@ -23,9 +23,12 @@ class VideoStateMachine:
     previous_frame = None
     next_frame = None
 
+    has_lost_video = False
     is_full_screen = False
     has_unpaused_symbol_in_bar = False
+    is_no_diff_between_frames = False
 
+    possible_interruption_time = None
     current_contour = None
     yt_bar_y = float('-inf')
     scroll_bar_bottom_edge = float('inf')
@@ -62,6 +65,7 @@ class VideoStateMachine:
         self.current_state = state
 
     def look_for_video(self):
+        videoExtensions.has_url_bar_changed(self.previous_frame, self.next_frame)
         biggest_contour = videoExtensions.find_biggest_contour(self.previous_frame)
         self.current_contour = videoExtensions.simplify_contour(biggest_contour)
 
@@ -75,9 +79,11 @@ class VideoStateMachine:
         self.check_is_video_starting()
 
     def look_for_interruptions(self):
-        videoExtensions.has_loading_popup_appeared(self.previous_frame, self.next_frame, self.current_contour)
+        self.make_scroll_bar_check()
+        self.check_for_loading_popup()
 
     def look_for_continuation(self):
+        self.check_is_video_starting()
         return 0
 
     def try_look_for_bar(self):
@@ -99,18 +105,28 @@ class VideoStateMachine:
             self.has_unpaused_symbol_in_bar = True
 
     def check_is_video_starting(self):
-        if self.has_unpaused_symbol_in_bar:
-            num_contours_threshold = 30
+        if self.has_unpaused_symbol_in_bar and videoExtensions.is_video_playing(self.previous_frame, self.next_frame, self.current_contour):
+            eventPrinter.print_video_start_playing(self.current_time)
+            self.has_unpaused_symbol_in_bar = False
+            self.change_state(State.PLAYING_VIDEO)
 
-            img_diff = videoExtensions.get_img_diff_between_frames(self.previous_frame,
-                                                                   self.next_frame,
-                                                                   self.current_contour)
-            contours = videoExtensions.find_all_contours(img_diff)
+    def check_is_video_continuing(self):
+        if videoExtensions.is_video_playing(self.previous_frame, self.next_frame, self.current_contour):
+            eventPrinter.print_video_resumed(self.current_time)
+            self.change_state(State.PLAYING_VIDEO)
 
-            if len(contours) > num_contours_threshold:
-                eventPrinter.print_video_start_playing(self.current_time)
-                self.has_unpaused_symbol_in_bar = False
-                self.change_state(State.PLAYING_VIDEO)
+    def check_for_loading_popup(self):
+        if self.possible_interruption_time is not None \
+                and videoExtensions.has_loading_popup_appeared(self.previous_frame, self.next_frame, self.current_contour):
+            eventPrinter.print_video_connection_interruption(self.current_time)
+            self.change_state(State.PAUSED_VIDEO)
+            return
+
+        img_diff = videoExtensions.get_img_diff_between_frames(self.previous_frame,
+                                                               self.next_frame,
+                                                               self.current_contour)
+        contours = videoExtensions.find_all_contours(img_diff)
+        self.possible_interruption_time = self.current_time if len(contours) == 0 else None
 
     def make_scroll_bar_check(self):
         current_scroll_bar_bottom_edge = videoExtensions.find_bottom_scroll_bar_point(self.previous_frame,
@@ -120,8 +136,7 @@ class VideoStateMachine:
         if not self.has_scroll_bar:
             self.scroll_bar_bottom_edge = current_scroll_bar_bottom_edge
         elif current_scroll_bar_bottom_edge != self.scroll_bar_bottom_edge:
-            scroll_difference = self.scroll_bar_bottom_edge - current_scroll_bar_bottom_edge
-            self.scroll_bar_bottom_edge = current_scroll_bar_bottom_edge
+            self.has_lost_video = True
             # TBD - updating components position when scrolled
             # self.update_components_position(scroll_difference)
 

@@ -25,6 +25,15 @@ def find_bottom_scroll_bar_point(frame, height, width):
     return float('inf')
 
 
+def has_url_bar_changed(previous_frame, next_frame):
+    upper_left_point = (110, 40)
+    lower_right_point = (1650, 65)
+    img_diff = get_img_diff_between_frames(previous_frame, next_frame, [upper_left_point, lower_right_point])
+    contours = find_all_smooth_contours(img_diff, 30)
+
+    return len(contours) > 0
+
+
 def find_all_hard_contours(frame):
     modified_frame = frame
     modified_frame = apply_grayscale(modified_frame)
@@ -60,10 +69,10 @@ def find_all_contours(frame):
     return contours
 
 
-def find_all_smooth_contours(frame):
+def find_all_smooth_contours(frame, trs_value = 5):
     modified_frame = frame
     modified_frame = apply_grayscale(modified_frame)
-    modified_frame = apply_threshold(modified_frame, 5)
+    modified_frame = apply_threshold(modified_frame, trs_value)
 
     #  dilation for noise and imperfections removal
     modified_frame = cv2.dilate(modified_frame, None, iterations=4)
@@ -110,11 +119,19 @@ def simplify_contour(contour):
 
     for point in contour:
         tuple_rem_point = point[0]
-        if not is_point_close_to_others(ensured_contour, tuple_rem_point, 5):
+        if not is_point_close_to_others(ensured_contour, tuple_rem_point, 200):
             ensured_contour.append([tuple_rem_point[0], tuple_rem_point[1]])
 
     ndarray_contour = np.array(ensured_contour)
     return ndarray_contour
+
+
+def is_video_playing(previous_frame, next_frame, contour):
+    num_contours_threshold = 30
+    img_diff = get_img_diff_between_frames(previous_frame, next_frame, contour)
+    contours = find_all_contours(img_diff)
+
+    return len(contours) > num_contours_threshold
 
 
 def is_point_close_to_others(point_list, new_point, dist_tres):
