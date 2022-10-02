@@ -16,7 +16,6 @@ def find_bottom_scroll_bar_point(frame, height, width):
         previous_point = frame[iy - 1][point_x]
         next_point = frame[iy][point_x]
         if not np.array_equal(previous_point, next_point):
-
             # DEBUG
             # cv2.circle(frame, [point_x, iy], 10, debug_color, -1)
 
@@ -27,11 +26,18 @@ def find_bottom_scroll_bar_point(frame, height, width):
 
 def has_url_bar_changed(previous_frame, next_frame):
     upper_left_point = (110, 40)
-    lower_right_point = (1650, 65)
+    lower_right_point = (1300, 65)
     img_diff = get_img_diff_between_frames(previous_frame, next_frame, [upper_left_point, lower_right_point])
-    contours = find_all_smooth_contours(img_diff, 30)
+    contours = find_all_contours(img_diff, 20)
+    return len(contours) > 10
 
-    return len(contours) > 0
+
+def is_full_screen_toggled(previous_frame, next_frame):
+    upper_left_point = (600, 5)
+    lower_right_point = (1100, 30)
+    img_diff = get_img_diff_between_frames(previous_frame, next_frame, [upper_left_point, lower_right_point])
+    contours = find_all_contours(img_diff)
+    # print(len(contours))
 
 
 def find_all_hard_contours(frame):
@@ -55,10 +61,10 @@ def find_all_hard_contours(frame):
     return contours
 
 
-def find_all_contours(frame):
+def find_all_contours(frame, trs_value=5):
     modified_frame = frame
     modified_frame = apply_grayscale(modified_frame)
-    modified_frame = apply_threshold(modified_frame, 5)
+    modified_frame = apply_threshold(modified_frame, trs_value)
 
     contours = cv2.findContours(modified_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = contours[0] if len(contours) == 2 else contours[1]
@@ -69,7 +75,7 @@ def find_all_contours(frame):
     return contours
 
 
-def find_all_smooth_contours(frame, trs_value = 5):
+def find_all_smooth_contours(frame, trs_value=5):
     modified_frame = frame
     modified_frame = apply_grayscale(modified_frame)
     modified_frame = apply_threshold(modified_frame, trs_value)
@@ -81,7 +87,7 @@ def find_all_smooth_contours(frame, trs_value = 5):
     contours = contours[0] if len(contours) == 2 else contours[1]
 
     # DEBUG
-    cv2.imshow("lol", modified_frame)
+    # cv2.imshow("lol", modified_frame)
 
     return contours
 
@@ -127,10 +133,9 @@ def simplify_contour(contour):
 
 
 def is_video_playing(previous_frame, next_frame, contour):
-    num_contours_threshold = 30
+    num_contours_threshold = 100
     img_diff = get_img_diff_between_frames(previous_frame, next_frame, contour)
     contours = find_all_contours(img_diff)
-
     return len(contours) > num_contours_threshold
 
 
@@ -191,6 +196,12 @@ def try_get_yt_bar_height(frame, contour):
             return y
 
     return float('-inf')
+
+
+def get_no_bar_contour(contour, bar_height):
+    min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
+    no_bar_contour = [[min_x, min_y], [max_x, bar_height - 5]]
+    return no_bar_contour
 
 
 def get_img_diff_between_frames(prev_frame, next_frame, contour=None):
