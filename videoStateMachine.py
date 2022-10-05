@@ -17,6 +17,9 @@ class VideoStateMachine:
     FRAME_HEIGHT = 0
     SCREEN_CONTOUR = None
 
+    MAX_LOAD_POP_COUNT = 5
+    MAX_NOT_LOAD_POP_COUNT = 5
+
     # dynamic parameters
     current_state = None
     current_time = None
@@ -24,11 +27,14 @@ class VideoStateMachine:
     previous_frame = None
     next_frame = None
 
+    current_load_pop_count = 0
+    current_not_load_pop_count = 0
+
     # video parameters
+    skip_url_check = False
     has_lost_video = False
     is_full_screen = False
     has_unpaused_symbol_in_bar = False
-    is_no_diff_between_frames = False
 
     possible_interruption_time = None
     video_contour = None
@@ -72,21 +78,21 @@ class VideoStateMachine:
 
     def wait_for_video_to_load(self):
         self.try_look_for_bar()
-        self.make_scroll_bar_check()
-        self.check_is_video_starting()
+        self.check_scroll_bar()
         self.check_full_screen_toggle()
+        self.check_is_video_starting()
 
     def look_for_interruptions(self):
-        self.make_scroll_bar_check()
-        self.check_for_loading_popup()
+        self.check_scroll_bar()
         self.check_full_screen_toggle()
         self.check_for_url_change()
+        self.check_for_loading_popup()
 
     def look_for_continuation(self):
-        self.make_scroll_bar_check()
-        self.check_is_video_continuing()
+        self.check_scroll_bar()
         self.check_full_screen_toggle()
         self.check_for_url_change()
+        self.check_is_video_continuing()
 
     def try_get_video_contour(self):
         biggest_contour = videoExtensions.find_biggest_contour(self.previous_frame)
@@ -116,9 +122,14 @@ class VideoStateMachine:
             self.has_unpaused_symbol_in_bar = True
 
     def check_for_url_change(self):
-        if not self.is_full_screen and videoExtensions.has_url_bar_changed(self.previous_frame, self.next_frame):
+        if not self.is_full_screen and not self.skip_url_check\
+                and videoExtensions.has_url_bar_changed(self.previous_frame, self.next_frame):
+            eventPrinter.print_url_changed(self.current_time)
             self.change_state(State.LOOKING_FOR_VIDEO)
             self.reset_video_parameters()
+
+        if self.skip_url_check:
+            self.skip_url_check = False
 
     def check_is_video_starting(self):
         if self.has_unpaused_symbol_in_bar and videoExtensions.is_video_playing(self.previous_frame, self.next_frame,
@@ -128,29 +139,47 @@ class VideoStateMachine:
             self.change_state(State.PLAYING_VIDEO)
 
     def check_is_video_continuing(self):
-        if not videoExtensions.has_loading_popup_appeared(self.previous_frame, self.next_frame, self.get_current_video_contour()):
-            eventPrinter.print_video_resumed(self.current_time)
-            self.change_state(State.PLAYING_VIDEO)
+        if not videoExtensions.has_loading_popup_appeared(self.previous_frame,
+                                                          self.next_frame,
+                                                          self.get_current_video_contour()):
+            self.current_not_load_pop_count += 1
+
+            if self.current_not_load_pop_count >= self.MAX_NOT_LOAD_POP_COUNT:
+                self.current_not_load_pop_count = 0
+                eventPrinter.print_video_resumed(self.current_time)
+                self.change_state(State.PLAYING_VIDEO)
+
+        else:
+            self.current_not_load_pop_count = 0
 
     def check_full_screen_toggle(self):
         if videoExtensions.is_full_screen_toggled(self.previous_frame, self.next_frame):
             self.is_full_screen = not self.is_full_screen
+            eventPrinter.print_full_screen_toggle(self.current_time, self.is_full_screen)
+            self.skip_url_check = True
 
     def check_for_loading_popup(self):
         if self.possible_interruption_time is not None \
-                and videoExtensions.has_loading_popup_appeared(self.previous_frame, self.next_frame,
+                and videoExtensions.has_loading_popup_appeared(self.previous_frame,
+                                                               self.next_frame,
                                                                self.get_current_video_contour()):
-            eventPrinter.print_video_connection_interruption(self.current_time)
-            self.change_state(State.PAUSED_VIDEO)
+            self.current_load_pop_count += 1
+
+            if self.current_load_pop_count >= self.MAX_LOAD_POP_COUNT:
+                self.current_load_pop_count = 0
+                eventPrinter.print_video_connection_interruption(self.current_time)
+                self.change_state(State.PAUSED_VIDEO)
+
             return
 
+        self.current_load_pop_count = 0
         img_diff = videoExtensions.get_img_diff_between_frames(self.previous_frame,
                                                                self.next_frame,
                                                                self.get_current_video_contour())
         contours = videoExtensions.find_all_contours(img_diff)
         self.possible_interruption_time = self.current_time if len(contours) == 0 else None
 
-    def make_scroll_bar_check(self):
+    def check_scroll_bar(self):
         current_scroll_bar_bottom_edge = videoExtensions.find_bottom_scroll_bar_point(self.previous_frame,
                                                                                       self.FRAME_HEIGHT,
                                                                                       self.FRAME_WIDTH)
@@ -158,12 +187,12 @@ class VideoStateMachine:
         if not self.has_scroll_bar:
             self.scroll_bar_bottom_edge = current_scroll_bar_bottom_edge
         elif not self.is_full_screen and current_scroll_bar_bottom_edge != self.scroll_bar_bottom_edge:
+            eventPrinter.print_scroll_bar_changed(self.current_time)
             self.has_lost_video = True
 
     def reset_video_parameters(self):
         self.has_lost_video = False
         self.has_unpaused_symbol_in_bar = False
-        self.is_no_diff_between_frames = False
 
         self.possible_interruption_time = None
         self.video_contour = None
@@ -173,3 +202,6 @@ class VideoStateMachine:
 
     def get_current_video_contour(self):
         return self.SCREEN_CONTOUR if self.is_full_screen else self.video_contour
+
+    def get_no_camera_frame(self, frame):
+        return videoExtensions.get_no_camera_frame(frame, self.FRAME_WIDTH)

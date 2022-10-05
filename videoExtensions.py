@@ -34,10 +34,10 @@ def has_url_bar_changed(previous_frame, next_frame):
 
 def is_full_screen_toggled(previous_frame, next_frame):
     upper_left_point = (600, 5)
-    lower_right_point = (1100, 30)
+    lower_right_point = (800, 30)
     img_diff = get_img_diff_between_frames(previous_frame, next_frame, [upper_left_point, lower_right_point])
     contours = find_all_contours(img_diff)
-    # print(len(contours))
+    return len(contours) > 0
 
 
 def find_all_hard_contours(frame):
@@ -80,6 +80,9 @@ def find_all_smooth_contours(frame, trs_value=5):
     modified_frame = apply_grayscale(modified_frame)
     modified_frame = apply_threshold(modified_frame, trs_value)
 
+    # blur image for smoothing sharp edges
+    modified_frame = cv2.GaussianBlur(modified_frame, (5, 5), 0)
+
     #  dilation for noise and imperfections removal
     modified_frame = cv2.dilate(modified_frame, None, iterations=4)
 
@@ -87,7 +90,7 @@ def find_all_smooth_contours(frame, trs_value=5):
     contours = contours[0] if len(contours) == 2 else contours[1]
 
     # DEBUG
-    # cv2.imshow("lol", modified_frame)
+    cv2.imshow("lol", modified_frame)
 
     return contours
 
@@ -103,6 +106,12 @@ def apply_threshold(image, min_thresh=0):
 def find_biggest_contour(frame):
     all_contours = find_all_hard_contours(frame)
     return max(all_contours, key=cv2.contourArea)
+
+
+def get_no_camera_frame(frame, frame_width):
+    img = frame
+    cv2.rectangle(img, (1332, 0), (frame_width, 327), 255, -1)
+    return img
 
 
 def is_unpaused_symbol_in_bar(frame):
@@ -218,8 +227,7 @@ def has_loading_popup_appeared(prev_frame, next_frame, contour):
     img_diff = get_img_diff_between_frames(prev_frame, next_frame)
     img_diff = get_contour_img(img_diff, contour, 0.1, 0.2)
     contours = find_all_smooth_contours(img_diff)
-
-    return True if len(contours) == 1 else False
+    return True if 0 < len(contours) <= 4 else False
 
 
 def get_contour_img(frame, contour, width_offset=1.0, height_offset=1.0):

@@ -27,3 +27,18 @@ def print_video_connection_interruption(time):
 def print_video_resumed(time):
     title = "Video resumed: "
     print_time_title_event(title, time)
+
+
+def print_full_screen_toggle(time, value):
+    title = "Fullscreen toggled to: " + str(value)
+    print_time_title_event(title, time)
+
+
+def print_url_changed(time):
+    title = "URL changed: "
+    print_time_title_event(title, time)
+
+
+def print_scroll_bar_changed(time):
+    title = "Scroll bar changed: "
+    print_time_title_event(title,time)
