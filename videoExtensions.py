@@ -17,7 +17,8 @@ def find_bottom_scroll_bar_point(frame, height, width):
         next_point = frame[iy][point_x]
         if not np.array_equal(previous_point, next_point):
             # DEBUG
-            # cv2.circle(frame, [point_x, iy], 10, debug_color, -1)
+            # cv2.circle(frame, [point_x, iy], 10, DEBUG_COLOR, -1)
+            # cv2.imshow("LOL", frame)
 
             return iy
 
@@ -29,7 +30,7 @@ def has_url_bar_changed(previous_frame, next_frame):
     lower_right_point = (1300, 65)
     img_diff = get_img_diff_between_frames(previous_frame, next_frame, [upper_left_point, lower_right_point])
     contours = find_all_contours(img_diff, 20)
-    return len(contours) > 10
+    return len(contours) >= 5
 
 
 def is_full_screen_toggled(previous_frame, next_frame):
@@ -90,7 +91,7 @@ def find_all_smooth_contours(frame, trs_value=5):
     contours = contours[0] if len(contours) == 2 else contours[1]
 
     # DEBUG
-    cv2.imshow("lol", modified_frame)
+    # cv2.imshow("lol", modified_frame)
 
     return contours
 
@@ -158,7 +159,7 @@ def is_point_close_to_others(point_list, new_point, dist_tres):
 
 def is_video_initializing(frame, contour):
     # higher value gives error -1073740940 (0xC0000374) which means Access Violation error (heap to big?)
-    grid_check_size = 3
+    grid_check_size = 10
     return is_contour_rectangular(contour) and is_contour_all_black(frame, contour, grid_check_size)
 
 
@@ -220,6 +221,7 @@ def get_img_diff_between_frames(prev_frame, next_frame, contour=None):
 
     # DEBUG
     # cv2.imshow("lol", img_diff)
+
     return img_diff
 
 
@@ -228,6 +230,13 @@ def has_loading_popup_appeared(prev_frame, next_frame, contour):
     img_diff = get_contour_img(img_diff, contour, 0.1, 0.2)
     contours = find_all_smooth_contours(img_diff)
     return True if 0 < len(contours) <= 4 else False
+
+
+def is_video_back_in_place(frame, contour):
+    min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
+    width = max_x - min_x
+    pixel_above = (max_x - int(width/2), min_y - 1)
+    return are_pixels_inline_same(frame, pixel_above, pixel_above[0], pixel_above[1], 20, 10)
 
 
 def get_contour_img(frame, contour, width_offset=1.0, height_offset=1.0):
@@ -243,14 +252,12 @@ def get_contour_img(frame, contour, width_offset=1.0, height_offset=1.0):
     return frame[new_min_y:new_max_y, new_min_x:new_max_x]
 
 
-def are_pixels_inline_same(frame, pixel, x_position, y_position):
+def are_pixels_inline_same(frame, pixel, x_position, y_position, checks=3, spacing=100):
     possible_mouse_encounters = 0
-    check_spacing = 100
-    one_side_count_checks = 3
 
-    for ix in range(1, one_side_count_checks + 1):
-        right_x = x_position + int(check_spacing * ix)
-        left_x = x_position - int(check_spacing * ix)
+    for ix in range(1, checks + 1):
+        right_x = x_position + int(spacing * ix)
+        left_x = x_position - int(spacing * ix)
         right_pixel = frame[y_position][right_x]
         left_pixel = frame[y_position][left_x]
 
@@ -261,8 +268,8 @@ def are_pixels_inline_same(frame, pixel, x_position, y_position):
             possible_mouse_encounters += 1
 
         # DEBUG
-        # cv2.circle(frame, [right_x, y_position], 10, DEBUG_COLOR, -1)
-        # cv2.circle(frame, [left_x, y_position], 10, DEBUG_COLOR, -1)
+        # cv2.circle(frame, [right_x, y_position], 10, DEBUG_COLOR, 1)
+        # cv2.circle(frame, [left_x, y_position], 10, DEBUG_COLOR, 1)
         # cv2.imshow("LOL", frame)
 
         if possible_mouse_encounters > 1:

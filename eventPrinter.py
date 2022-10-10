@@ -39,6 +39,11 @@ def print_url_changed(time):
     print_time_title_event(title, time)
 
 
-def print_scroll_bar_changed(time):
+def print_video_lost(time):
     title = "Scroll bar changed: "
-    print_time_title_event(title,time)
+    print_time_title_event(title, time)
+
+
+def print_video_come_back(time):
+    title = "Video came back to place: "
+    print_time_title_event(title, time)

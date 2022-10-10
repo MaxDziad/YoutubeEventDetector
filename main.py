@@ -27,8 +27,8 @@ if __name__ == '__main__':
             stateMachine.run_current_state(copied_previous_frame, current_frame, current_time)
 
             # cv2.waitKey waits in milliseconds before extracting next frame
-            if cv2.waitKey(frame_reading_speed) == ord('q'):
-                break
+            #if cv2.waitKey(frame_reading_speed) == ord('q'):
+                #break
 
             previous_frame = current_frame
         else:
