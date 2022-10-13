@@ -42,3 +42,4 @@ if __name__ == '__main__':
 
             video.release()
             cv2.destroyAllWindows()
+            print("VIDEO ENDED")

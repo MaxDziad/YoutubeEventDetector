@@ -1,7 +1,13 @@
 
 def print_time_title_event(title, time):
-    time = round((time / 1000), 3)
-    print(title + str(time) + " s")
+    hours = int(time / 3600000)
+    minutes = int((time % 3600000) / 60000)
+    seconds = round((time % 60000) / 1000, 2)
+
+    time_message = str(hours) + "h " if hours > 0 else ""
+    time_message += str(minutes) + "min " if hours > 0 or minutes > 0 else ""
+    time_message += str(seconds) + "s"
+    print(title + time_message)
 
 
 def print_video_start_initializing(time):
@@ -30,7 +36,7 @@ def print_video_resumed(time):
 
 
 def print_full_screen_toggle(time, value):
-    title = "Fullscreen toggled to: " + str(value)
+    title = "Full screen toggled to " + str(value) + ":"
     print_time_title_event(title, time)
 
 

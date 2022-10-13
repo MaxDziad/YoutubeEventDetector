@@ -30,9 +30,7 @@ def has_url_bar_changed(previous_frame, next_frame):
     lower_right_point = (1300, 60)
     img_diff = get_img_diff_between_frames(previous_frame, next_frame, [upper_left_point, lower_right_point])
     contours = find_all_contours(img_diff, 100)
-    if len(contours) >= 4:
-        print("Contours detected in url: " + str(len(contours)))
-    return len(contours) >= 4
+    return len(contours) >= 10
 
 
 def is_full_screen_toggled(previous_frame, next_frame):
