@@ -26,11 +26,13 @@ def find_bottom_scroll_bar_point(frame, height, width):
 
 
 def has_url_bar_changed(previous_frame, next_frame):
-    upper_left_point = (110, 40)
-    lower_right_point = (1300, 65)
+    upper_left_point = (120, 45)
+    lower_right_point = (1300, 60)
     img_diff = get_img_diff_between_frames(previous_frame, next_frame, [upper_left_point, lower_right_point])
-    contours = find_all_contours(img_diff, 20)
-    return len(contours) >= 5
+    contours = find_all_contours(img_diff, 100)
+    if len(contours) >= 4:
+        print("Contours detected in url: " + str(len(contours)))
+    return len(contours) >= 4
 
 
 def is_full_screen_toggled(previous_frame, next_frame):
