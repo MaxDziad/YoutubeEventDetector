@@ -19,9 +19,9 @@ class VideoStateMachine:
     FRAME_HEIGHT = 0
     SCREEN_CONTOUR = None
 
-    MAX_FRAME_SKIP_COUNT = 3
+    MAX_FRAME_SKIP_COUNT = 5
     MAX_SCROLL_BAR_COUNT = 5
-    MAX_COME_BACK_COUNT = 10
+    MAX_COME_BACK_COUNT = 20
     MAX_LOAD_POP_COUNT = 15
     MAX_NOT_LOAD_POP_COUNT = 15
 
@@ -68,6 +68,8 @@ class VideoStateMachine:
         self.current_time = time
 
         self.try_remove_frame_skip()
+        if self.skip_frame:
+            return
 
         match self.current_state:
             case State.LOOKING_FOR_VIDEO:
@@ -135,6 +137,7 @@ class VideoStateMachine:
         if not self.is_full_screen and not self.skip_frame\
                 and videoExtensions.has_url_bar_changed(self.previous_frame, self.next_frame):
             eventPrinter.print_url_changed(self.current_time)
+            skip_frame = True
             self.change_state(State.SITE_CHANGED)
             self.reset_video_parameters()
 
@@ -171,9 +174,12 @@ class VideoStateMachine:
 
             if self.current_load_pop_count >= self.MAX_LOAD_POP_COUNT:
                 self.current_load_pop_count = 0
+
+                if self.current_state != State.PLAYING_VIDEO:
+                    eventPrinter.print_video_start_playing(self.current_time)
+
                 eventPrinter.print_video_connection_interruption(self.current_time)
                 self.change_state(State.PAUSED_VIDEO)
-
         else:
             self.current_load_pop_count = 0
 
@@ -199,6 +205,7 @@ class VideoStateMachine:
             eventPrinter.print_video_lost(self.current_time)
             self.current_scroll_bar_count = 0
             self.has_lost_video = True
+            self.change_state(State.SCROLLED_VIDEO)
 
         self.possible_scroll_bar_edge = current_scroll_bar_bottom_edge
 

@@ -115,11 +115,6 @@ def get_no_camera_frame(frame, frame_width):
     return img
 
 
-def is_unpaused_symbol_in_bar(frame):
-    all_contours = find_all_smooth_contours(frame)
-    return len(all_contours) == 2
-
-
 def get_youtube_bar_image(frame, contour, bar_height):
     min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
 
@@ -227,16 +222,35 @@ def get_img_diff_between_frames(prev_frame, next_frame, contour=None):
 
 def has_loading_popup_appeared(prev_frame, next_frame, contour):
     img_diff = get_img_diff_between_frames(prev_frame, next_frame)
-    img_diff = get_contour_img(img_diff, contour, 0.1, 0.2)
-    contours = find_all_smooth_contours(img_diff)
-    return True if 0 < len(contours) <= 4 else False
+    no_popup_img = img_diff.copy()
+    paint_img_center(no_popup_img, contour, 0.1, 0.2)
+    popup_img = get_contour_img(img_diff, contour, 0.1, 0.2)
+    contours = find_all_smooth_contours(popup_img)
+    print(len(contours))
+    return 0 < len(contours) <= 4
 
 
 def is_video_back_in_place(frame, contour):
     min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
     width = max_x - min_x
-    pixel_above = (max_x - int(width/2), min_y - 1)
-    return are_pixels_inline_same(frame, pixel_above, pixel_above[0], pixel_above[1], 20, 10)
+    pixel_above = (max_x - int(width/2), min_y - 4)
+    return are_pixels_inline_same(frame, pixel_above, pixel_above[0], pixel_above[1], 15, 10)
+
+
+def paint_img_center(frame, contour, width_offset=1.0, height_offset=1.0):
+    min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
+    half_height = int((max_y - min_y) / 2)
+    half_width = int((max_x - min_x) / 2)
+
+    new_min_y = min_y + half_height - int(height_offset * half_height)
+    new_max_y = max_y - half_height + int(height_offset * half_height)
+    new_min_x = min_x + half_width - int(width_offset * half_width)
+    new_max_x = max_x - half_width + int(width_offset * half_width)
+
+    cv2.rectangle(frame, (new_min_x, new_min_y), (new_max_x, new_max_y),DEBUG_COLOR, -1)
+
+    # DEBUG
+    cv2.imshow("LOL", frame)
 
 
 def get_contour_img(frame, contour, width_offset=1.0, height_offset=1.0):
