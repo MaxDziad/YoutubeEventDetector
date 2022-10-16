@@ -189,20 +189,6 @@ def is_contour_all_black(frame, contour, grid_size):
     return True
 
 
-def try_get_yt_bar_height(frame, contour):
-    min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
-    contour_width = max_x - min_x
-    center_x = min_x + int(contour_width / 2)
-
-    for y in range(max_y, min_y, -1):
-        current_pixel = frame[y][center_x]
-
-        if not np.array_equal(current_pixel, BLACK) and are_pixels_inline_same(frame, current_pixel, center_x, y):
-            return y
-
-    return float('-inf')
-
-
 def get_no_bar_contour(contour, bar_height):
     min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
     no_bar_contour = [[min_x, min_y], [max_x, bar_height - 5]]
@@ -220,14 +206,28 @@ def get_img_diff_between_frames(prev_frame, next_frame, contour=None):
     return img_diff
 
 
-def has_loading_popup_appeared(prev_frame, next_frame, contour):
+def has_loading_popup_appeared(prev_frame, next_frame, contour, img_diff_count):
+    diff_count = img_diff_count
     img_diff = get_img_diff_between_frames(prev_frame, next_frame)
+
     no_popup_img = img_diff.copy()
-    paint_img_center(no_popup_img, contour, 0.1, 0.2)
+    paint_img_popup_place(no_popup_img, contour, 0.1, 0.2)
+    no_popup_img = get_contour_img(no_popup_img, contour)
+    no_popup_contours = find_all_contours(no_popup_img, 5)
+
     popup_img = get_contour_img(img_diff, contour, 0.1, 0.2)
-    contours = find_all_smooth_contours(popup_img)
-    print(len(contours))
-    return 0 < len(contours) <= 4
+    popup_contours = find_all_smooth_contours(popup_img)
+
+    has_possible_popup = 0 < len(popup_contours) <= 4
+
+    if has_possible_popup:
+        if len(no_popup_contours) >= 35:
+            diff_count += 1
+
+        if diff_count == 3:
+            return False, 0
+
+    return has_possible_popup, diff_count
 
 
 def is_video_back_in_place(frame, contour):
@@ -237,7 +237,7 @@ def is_video_back_in_place(frame, contour):
     return are_pixels_inline_same(frame, pixel_above, pixel_above[0], pixel_above[1], 15, 10)
 
 
-def paint_img_center(frame, contour, width_offset=1.0, height_offset=1.0):
+def paint_img_popup_place(frame, contour, width_offset=1.0, height_offset=1.0):
     min_x, max_x, min_y, max_y = find_min_max_coordinates(contour)
     half_height = int((max_y - min_y) / 2)
     half_width = int((max_x - min_x) / 2)
@@ -250,7 +250,7 @@ def paint_img_center(frame, contour, width_offset=1.0, height_offset=1.0):
     cv2.rectangle(frame, (new_min_x, new_min_y), (new_max_x, new_max_y),DEBUG_COLOR, -1)
 
     # DEBUG
-    cv2.imshow("LOL", frame)
+    # cv2.imshow("LOL", frame)
 
 
 def get_contour_img(frame, contour, width_offset=1.0, height_offset=1.0):

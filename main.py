@@ -12,6 +12,7 @@ if __name__ == '__main__':
     for file in os.listdir(video_catalogue_path):
         if file.endswith(".mp4"):
             video_path = video_catalogue_path + "/" + file
+            print("================= VIDEO: " + str(file) + " =================")
 
             # video reading
             video = cv2.VideoCapture(video_path)
@@ -33,8 +34,8 @@ if __name__ == '__main__':
                     stateMachine.run_current_state(copied_previous_frame, current_frame, current_time)
 
                     # cv2.waitKey waits in milliseconds before extracting next frame
-                    if cv2.waitKey(frame_reading_speed) == ord('q'):
-                        break
+                    #if cv2.waitKey(frame_reading_speed) == ord('q'):
+                        #break
 
                     previous_frame = current_frame
                 else:
@@ -42,4 +43,4 @@ if __name__ == '__main__':
 
             video.release()
             cv2.destroyAllWindows()
-            print("VIDEO ENDED")
+            print("================================== VIDEO ENDED ==================================")
