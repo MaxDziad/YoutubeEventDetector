@@ -30,12 +30,12 @@ def has_url_bar_changed(previous_frame, next_frame):
     lower_right_point = (1300, 60)
     img_diff = get_img_diff_between_frames(previous_frame, next_frame, [upper_left_point, lower_right_point])
     contours = find_all_contours(img_diff, 100)
-    return len(contours) >= 10
+    return len(contours) >= 30
 
 
 def is_full_screen_toggled(previous_frame, next_frame):
-    upper_left_point = (600, 5)
-    lower_right_point = (800, 30)
+    upper_left_point = (1300, 5)
+    lower_right_point = (1315, 20)
     img_diff = get_img_diff_between_frames(previous_frame, next_frame, [upper_left_point, lower_right_point])
     contours = find_all_contours(img_diff)
     return len(contours) > 0
@@ -152,9 +152,8 @@ def is_point_close_to_others(point_list, new_point, dist_tres):
     return False
 
 
-def is_video_initializing(frame, contour):
+def is_video_initializing(frame, contour, grid_check_size=10):
     # higher value gives error -1073740940 (0xC0000374) which means Access Violation error (heap to big?)
-    grid_check_size = 10
     return is_contour_rectangular(contour) and is_contour_all_black(frame, contour, grid_check_size)
 
 
@@ -220,12 +219,11 @@ def has_loading_popup_appeared(prev_frame, next_frame, contour, img_diff_count):
 
     has_possible_popup = 0 < len(popup_contours) <= 4
 
-    if has_possible_popup:
-        if len(no_popup_contours) >= 35:
-            diff_count += 1
+    if len(no_popup_contours) >= 35:
+        diff_count += 1
 
-        if diff_count == 3:
-            return False, 0
+    if diff_count == 3:
+        return False, 0
 
     return has_possible_popup, diff_count
 

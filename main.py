@@ -33,7 +33,7 @@ if __name__ == '__main__':
                     current_time = video.get(cv2.CAP_PROP_POS_MSEC)
                     stateMachine.run_current_state(copied_previous_frame, current_frame, current_time)
 
-                    # cv2.waitKey waits in milliseconds before extracting next frame
+                    # enable both lines for activating frame debugging
                     #if cv2.waitKey(frame_reading_speed) == ord('q'):
                         #break
 
