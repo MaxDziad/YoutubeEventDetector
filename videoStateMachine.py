@@ -175,7 +175,7 @@ class VideoStateMachine:
                 self.current_not_load_pop_count = 0
                 self.current_img_diff_count = 0
                 eventPrinter.print_video_resumed(self.possible_loading_popup_disappear_time, str(self.new_event_id))
-                self.eventWriter.request_event_write(str(self.new_event_id))
+                self.eventWriter.request_instant_event_write(str(self.new_event_id))
                 self.new_event_id += 1
                 self.possible_loading_popup_disappear_time = 0
                 self.change_state(State.PLAYING_VIDEO)
@@ -214,11 +214,11 @@ class VideoStateMachine:
 
                 if self.current_state != State.PLAYING_VIDEO:
                     eventPrinter.print_video_start_playing(self.possible_loading_popup_appear_time, str(self.new_event_id))
-                    self.eventWriter.request_event_write(str(self.new_event_id))
+                    self.eventWriter.request_instant_event_write(str(self.new_event_id))
                     self.new_event_id += 1
 
                 eventPrinter.print_video_connection_interruption(self.possible_loading_popup_appear_time, str(self.new_event_id))
-                self.eventWriter.request_event_write(str(self.new_event_id))
+                self.eventWriter.request_instant_event_write(str(self.new_event_id))
                 self.new_event_id += 1
                 self.possible_loading_popup_appear_time = 0
                 self.change_state(State.PAUSED_VIDEO)

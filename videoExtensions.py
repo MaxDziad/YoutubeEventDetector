@@ -1,4 +1,3 @@
-# extension methods for manipulating video frame
 import numpy as np
 import cv2
 
@@ -6,6 +5,7 @@ import cv2
 BLACK = [0, 0, 0]
 WHITE = [255, 255, 255]
 DEBUG_COLOR = [0, 255, 0]
+FOURCC = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 
 
 def find_bottom_scroll_bar_point(frame, height, width):
@@ -110,7 +110,7 @@ def find_biggest_contour(frame):
 
 
 def get_no_camera_frame(frame, frame_width):
-    img = frame
+    img = frame.copy()
     cv2.rectangle(img, (1332, 0), (frame_width, 327), 255, -1)
     return img
 
@@ -315,8 +315,8 @@ def find_min_max_coordinates(contour):
     return min_x, max_x, min_y, max_y
 
 
-def save_video_event(images, video_name, resolution):
-    out = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*'DIVX'), 60, resolution)
+def save_video_event(images, video_path, resolution):
+    out = cv2.VideoWriter(video_path, FOURCC, 60, resolution)
 
     for image in images:
         out.write(image)
