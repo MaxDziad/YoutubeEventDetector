@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
             # initializing state machine
             stateMachine = VideoStateMachine()
-            stateMachine.initialize(WIDTH, HEIGHT)
+            stateMachine.initialize(WIDTH, HEIGHT, file[0:-4])
 
             while video.isOpened():
                 is_read, current_frame = video.read()

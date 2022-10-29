@@ -313,3 +313,12 @@ def find_min_max_coordinates(contour):
             max_y = current_y
 
     return min_x, max_x, min_y, max_y
+
+
+def save_video_event(images, video_name, resolution):
+    out = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*'DIVX'), 60, resolution)
+
+    for image in images:
+        out.write(image)
+
+    out.release()

@@ -2,6 +2,7 @@ from enum import Enum
 
 import eventPrinter
 import videoExtensions
+from videoEventWriter import VideoEventWriter
 
 
 class State(Enum):
@@ -23,6 +24,10 @@ class VideoStateMachine:
     MAX_COME_BACK_COUNT = 20
     MAX_LOAD_POP_COUNT = 15
     MAX_NOT_LOAD_POP_COUNT = 15
+
+    # event writer
+    eventWriter = None
+    new_event_id = 0
 
     # dynamic parameters
     previous_state = None
@@ -58,15 +63,19 @@ class VideoStateMachine:
     def __init__(self):
         self.current_state = State.LOOKING_FOR_VIDEO
 
-    def initialize(self, width, height):
+    def initialize(self, width, height, file_name):
         self.FRAME_WIDTH = width
         self.FRAME_HEIGHT = height
         self.SCREEN_CONTOUR = [(0, 0), (0, height), (width, 0), (width, height)]
+        self.eventWriter = VideoEventWriter(file_name, (width, height))
+        self.new_event_id = 1
 
     def run_current_state(self, previous_frame, next_frame, time):
         self.previous_frame = previous_frame
         self.next_frame = next_frame
         self.current_time = time
+
+        self.eventWriter.receive_frame(previous_frame)
 
         self.try_remove_frame_skip()
         if self.skip_frame:
@@ -124,14 +133,18 @@ class VideoStateMachine:
     def check_is_video_initializing(self):
         if videoExtensions.is_video_initializing(self.previous_frame, self.video_contour):
             self.had_video_once = True
-            eventPrinter.print_video_start_initializing(self.current_time)
+            eventPrinter.print_video_start_initializing(self.current_time, str(self.new_event_id))
+            self.eventWriter.request_event_write(str(self.new_event_id))
+            self.new_event_id += 1
             self.skip_frame = True
             self.change_state(State.LOADING_VIDEO)
 
     def check_for_url_change(self):
         if not self.is_full_screen and not self.skip_frame\
                 and videoExtensions.has_url_bar_changed(self.previous_frame, self.next_frame):
-            eventPrinter.print_url_changed(self.current_time)
+            eventPrinter.print_url_changed(self.current_time, str(self.new_event_id))
+            self.eventWriter.request_event_write(str(self.new_event_id))
+            self.new_event_id += 1
             self.scroll_bar_bottom_edge = float('inf')
             self.skip_frame = True
             self.change_state(State.SITE_CHANGED)
@@ -139,7 +152,9 @@ class VideoStateMachine:
 
     def check_is_video_starting(self):
         if videoExtensions.is_video_playing(self.previous_frame, self.next_frame, self.get_current_video_contour()):
-            eventPrinter.print_video_start_playing(self.current_time)
+            eventPrinter.print_video_start_playing(self.current_time, str(self.new_event_id))
+            self.eventWriter.request_event_write(str(self.new_event_id))
+            self.new_event_id += 1
             self.change_state(State.PLAYING_VIDEO)
 
     def check_is_video_continuing(self):
@@ -159,7 +174,9 @@ class VideoStateMachine:
             if self.current_not_load_pop_count >= self.MAX_NOT_LOAD_POP_COUNT:
                 self.current_not_load_pop_count = 0
                 self.current_img_diff_count = 0
-                eventPrinter.print_video_resumed(self.possible_loading_popup_disappear_time)
+                eventPrinter.print_video_resumed(self.possible_loading_popup_disappear_time, str(self.new_event_id))
+                self.eventWriter.request_event_write(str(self.new_event_id))
+                self.new_event_id += 1
                 self.possible_loading_popup_disappear_time = 0
                 self.change_state(State.PLAYING_VIDEO)
 
@@ -171,7 +188,9 @@ class VideoStateMachine:
         if videoExtensions.is_full_screen_toggled(self.previous_frame, self.next_frame):
             self.skip_frame = True
             self.is_full_screen = not self.is_full_screen
-            eventPrinter.print_full_screen_toggle(self.current_time, self.is_full_screen)
+            eventPrinter.print_full_screen_toggle(self.current_time, self.is_full_screen, str(self.new_event_id))
+            self.eventWriter.request_event_write(str(self.new_event_id))
+            self.new_event_id += 1
 
     def check_for_loading_popup(self, black_background=False):
         has_found, diff_count = videoExtensions.has_loading_popup_appeared(self.get_no_camera_frame(self.previous_frame),
@@ -194,9 +213,13 @@ class VideoStateMachine:
                 self.current_img_diff_count = 0
 
                 if self.current_state != State.PLAYING_VIDEO:
-                    eventPrinter.print_video_start_playing(self.possible_loading_popup_appear_time)
+                    eventPrinter.print_video_start_playing(self.possible_loading_popup_appear_time, str(self.new_event_id))
+                    self.eventWriter.request_event_write(str(self.new_event_id))
+                    self.new_event_id += 1
 
-                eventPrinter.print_video_connection_interruption(self.possible_loading_popup_appear_time)
+                eventPrinter.print_video_connection_interruption(self.possible_loading_popup_appear_time, str(self.new_event_id))
+                self.eventWriter.request_event_write(str(self.new_event_id))
+                self.new_event_id += 1
                 self.possible_loading_popup_appear_time = 0
                 self.change_state(State.PAUSED_VIDEO)
         else:
@@ -216,7 +239,9 @@ class VideoStateMachine:
 
         if self.scroll_bar_bottom_edge != current_scroll_bar_bottom_edge:
             self.scroll_bar_bottom_edge = float('inf')
-            eventPrinter.print_video_lost(self.current_time)
+            eventPrinter.print_video_lost(self.current_time, str(self.new_event_id))
+            self.eventWriter.request_event_write(str(self.new_event_id))
+            self.new_event_id += 1
             self.has_lost_video = True
             # self.change_state(State.SCROLLED_VIDEO)
 
@@ -228,7 +253,9 @@ class VideoStateMachine:
 
             if self.current_come_back_count >= self.MAX_COME_BACK_COUNT:
                 self.has_lost_video = False
-                eventPrinter.print_video_come_back(self.current_time)
+                eventPrinter.print_video_come_back(self.current_time, str(self.new_event_id))
+                self.eventWriter.request_event_write(str(self.new_event_id))
+                self.new_event_id += 1
                 self.change_state(self.previous_state)
 
         else:
