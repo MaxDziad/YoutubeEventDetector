@@ -5,7 +5,8 @@ from dataclasses import dataclass
 
 
 class VideoEventWriter:
-    CAPTURED_EVENT_FRAMES = 30
+    BUF_SIZE = 80
+    event_video_frames_size = 30
 
     video_name = ""
     video_resolution = ()
@@ -22,16 +23,14 @@ class VideoEventWriter:
             os.mkdir("out\\" + name)
 
     def request_event_write(self, event_id):
-        event_data = EventData(int(self.CAPTURED_EVENT_FRAMES / 2), event_id)
+        event_data = EventData(int(self.event_video_frames_size / 2), event_id)
         self.requested_events.append(event_data)
 
     def request_instant_event_write(self, event_id):
-        event_data = EventData(1, event_id)
-        print(event_data.frames_left)
-        self.requested_events.append(event_data)
+        self.instant_save_video(event_id)
 
     def receive_frame(self, frame):
-        if len(self.current_frames) == self.CAPTURED_EVENT_FRAMES:
+        if len(self.current_frames) == self.BUF_SIZE:
             self.current_frames.pop(0)
 
         self.current_frames.append(frame)
@@ -47,7 +46,13 @@ class VideoEventWriter:
 
     def save_video(self, event_id):
         full_video_name = "out\\" + self.video_name + "\\" + event_id + ".mp4"
-        videoExtensions.save_video_event(self.current_frames, full_video_name, self.video_resolution)
+        video_frames = self.current_frames[self.BUF_SIZE - 1 - self.event_video_frames_size: self.BUF_SIZE - 1]
+        videoExtensions.save_video_event(video_frames, full_video_name, self.video_resolution)
+
+    def instant_save_video(self, event_id):
+        full_video_name = "out\\" + self.video_name + "\\" + event_id + ".mp4"
+        video_frames = self.current_frames[5:self.event_video_frames_size + 5]
+        videoExtensions.save_video_event(video_frames, full_video_name, self.video_resolution)
 
 
 @dataclass
