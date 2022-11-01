@@ -12,7 +12,7 @@ if __name__ == '__main__':
     for file in os.listdir(video_catalogue_path):
         if file.endswith(".mp4"):
             video_path = video_catalogue_path + "/" + file
-            print("================= VIDEO: " + str(file) + " =================")
+            print("Work on " + file + " has started... Please don't close the application.")
 
             # video reading
             video = cv2.VideoCapture(video_path)
@@ -41,6 +41,7 @@ if __name__ == '__main__':
                 else:
                     break
 
+            stateMachine.save_text_file()
             video.release()
             cv2.destroyAllWindows()
-            print("================================== VIDEO ENDED ==================================")
+            print("Work on " + file + "has ended.")
