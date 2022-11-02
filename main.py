@@ -9,6 +9,7 @@ if __name__ == '__main__':
 
     # reading each video file in catalogue
     video_catalogue_path = "VideoSources"
+
     for file in os.listdir(video_catalogue_path):
         if file.endswith(".mp4"):
             video_path = video_catalogue_path + "/" + file
@@ -45,3 +46,5 @@ if __name__ == '__main__':
             video.release()
             cv2.destroyAllWindows()
             print("Work on " + file + "has ended.")
+
+    print("Application finished working.")

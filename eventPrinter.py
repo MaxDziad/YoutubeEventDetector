@@ -47,11 +47,13 @@ def print_url_changed(file, time, event_id):
     print_time_title_event(title, time, file, event_id)
 
 
+# Not Implemented!
 def print_video_lost(file, time, event_id):
     title = "Scroll bar changed: "
     print_time_title_event(title, time, file, event_id)
 
 
+# Not Implemented!
 def print_video_come_back(file, time, event_id):
     title = "Video came back to place: "
     print_time_title_event(title, time, file, event_id)

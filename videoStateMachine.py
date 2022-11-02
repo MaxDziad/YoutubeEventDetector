@@ -20,10 +20,11 @@ class VideoStateMachine:
     SCREEN_CONTOUR = None
 
     MAX_FRAME_SKIP_COUNT = 5
+    MAX_TIMES_LOADING_POPUP_VISIBLE = 15
+    MAX_TIMES_LOADING_POPUP_NOT_VISIBLE = 15
+
     MAX_SCROLL_BAR_COUNT = 5
     MAX_COME_BACK_COUNT = 20
-    MAX_LOAD_POP_COUNT = 15
-    MAX_NOT_LOAD_POP_COUNT = 15
 
     # event writer
     text_file = None
@@ -38,11 +39,12 @@ class VideoStateMachine:
     previous_frame = None
     next_frame = None
 
-    current_frame_skip_count = 0
+    current_frames_skip_count = 0
+    times_loading_popup_visible = 0
+    times_loading_popup_not_visible = 0
+
     current_scroll_bar_count = 0
     current_come_back_count = 0
-    current_load_pop_count = 0
-    current_not_load_pop_count = 0
 
     current_img_diff_count = 0
 
@@ -55,11 +57,10 @@ class VideoStateMachine:
 
     possible_loading_popup_appear_time = 0
     possible_loading_popup_disappear_time = 0
-    video_contour = None
-    scroll_bar_bottom_edge = float('inf')
 
-    # references
-    has_scroll_bar = scroll_bar_bottom_edge != float('inf')
+    video_contour = None
+
+    scroll_bar_bottom_edge = float('inf')
 
     def __init__(self):
         self.current_state = State.LOOKING_FOR_VIDEO
@@ -94,6 +95,20 @@ class VideoStateMachine:
                 self.look_for_continuation()
             case State.SITE_CHANGED:
                 self.look_to_start_state()
+
+    def try_remove_frame_skip(self):
+        if self.skip_frame:
+            self.current_frames_skip_count += 1
+
+        if self.current_frames_skip_count >= self.MAX_FRAME_SKIP_COUNT:
+            self.current_frames_skip_count = 0
+            self.skip_frame = False
+
+    def get_current_video_contour(self):
+        return self.SCREEN_CONTOUR if self.is_full_screen else self.video_contour
+
+    def get_no_camera_frame(self, frame):
+        return videoExtensions.get_no_camera_frame(frame, self.FRAME_WIDTH)
 
     def change_state(self, state):
         self.current_img_diff_count = 0
@@ -141,16 +156,22 @@ class VideoStateMachine:
             self.skip_frame = True
             self.change_state(State.LOADING_VIDEO)
 
+    def check_full_screen_toggle(self):
+        if videoExtensions.is_full_screen_toggled(self.previous_frame, self.next_frame):
+            self.skip_frame = True
+            self.is_full_screen = not self.is_full_screen
+            eventPrinter.print_full_screen_toggle(self.text_file, self.current_time, self.is_full_screen, str(self.new_event_id))
+            self.event_writer.request_event_write(str(self.new_event_id))
+            self.new_event_id += 1
+
     def check_for_url_change(self):
         if not self.is_full_screen and not self.skip_frame\
                 and videoExtensions.has_url_bar_changed(self.previous_frame, self.next_frame):
             eventPrinter.print_url_changed(self.text_file, self.current_time, str(self.new_event_id))
             self.event_writer.request_event_write(str(self.new_event_id))
             self.new_event_id += 1
-            self.scroll_bar_bottom_edge = float('inf')
             self.skip_frame = True
             self.change_state(State.SITE_CHANGED)
-            self.reset_video_parameters()
 
     def check_is_video_starting(self):
         if videoExtensions.is_video_playing(self.previous_frame, self.next_frame, self.get_current_video_contour()):
@@ -160,58 +181,49 @@ class VideoStateMachine:
             self.change_state(State.PLAYING_VIDEO)
 
     def check_is_video_continuing(self):
-        has_found, diff_count = videoExtensions.has_loading_popup_appeared(
+        is_visible, img_diffs_count = videoExtensions.is_loading_popup_visible(
             self.get_no_camera_frame(self.previous_frame),
             self.get_no_camera_frame(self.next_frame),
             self.get_current_video_contour(),
             self.current_img_diff_count)
 
-        if not has_found or diff_count > self.current_img_diff_count:
+        if not is_visible or img_diffs_count > self.current_img_diff_count:
             if self.possible_loading_popup_disappear_time == 0:
                 self.possible_loading_popup_disappear_time = self.current_time
 
-            self.current_not_load_pop_count += 1
-            self.current_img_diff_count = diff_count
+            self.times_loading_popup_not_visible += 1
+            self.current_img_diff_count = img_diffs_count
 
-            if self.current_not_load_pop_count >= self.MAX_NOT_LOAD_POP_COUNT:
-                self.current_not_load_pop_count = 0
-                self.current_img_diff_count = 0
+            if self.times_loading_popup_not_visible >= self.MAX_TIMES_LOADING_POPUP_NOT_VISIBLE:
                 eventPrinter.print_video_resumed(self.text_file, self.possible_loading_popup_disappear_time, str(self.new_event_id))
                 self.event_writer.request_instant_event_write(str(self.new_event_id))
                 self.new_event_id += 1
                 self.possible_loading_popup_disappear_time = 0
+                self.times_loading_popup_not_visible = 0
+                self.current_img_diff_count = 0
                 self.change_state(State.PLAYING_VIDEO)
-
         else:
             self.possible_loading_popup_disappear_time = 0
-            self.current_not_load_pop_count = 0
+            self.times_loading_popup_not_visible = 0
 
-    def check_full_screen_toggle(self):
-        if videoExtensions.is_full_screen_toggled(self.previous_frame, self.next_frame):
-            self.skip_frame = True
-            self.is_full_screen = not self.is_full_screen
-            eventPrinter.print_full_screen_toggle(self.text_file, self.current_time, self.is_full_screen, str(self.new_event_id))
-            self.event_writer.request_event_write(str(self.new_event_id))
-            self.new_event_id += 1
-
-    def check_for_loading_popup(self, black_background=False):
-        has_found, diff_count = videoExtensions.has_loading_popup_appeared(self.get_no_camera_frame(self.previous_frame),
-                                                                           self.get_no_camera_frame(self.next_frame),
-                                                                           self.get_current_video_contour(),
-                                                                           self.current_img_diff_count)
-        self.current_img_diff_count = diff_count
-
-        if black_background and not videoExtensions.is_video_initializing(self.previous_frame, self.video_contour, 4):
+    def check_for_loading_popup(self, black_background_check=False):
+        if black_background_check and not videoExtensions.is_video_initializing(self.previous_frame, self.video_contour, 4):
             return
 
-        if has_found:
+        is_visible, img_diff_count = videoExtensions.is_loading_popup_visible(self.get_no_camera_frame(self.previous_frame),
+                                                                              self.get_no_camera_frame(self.next_frame),
+                                                                              self.get_current_video_contour(),
+                                                                              self.current_img_diff_count)
+        self.current_img_diff_count = img_diff_count
+
+        if is_visible:
             if self.possible_loading_popup_appear_time == 0:
                 self.possible_loading_popup_appear_time = self.current_time
 
-            self.current_load_pop_count += 1
+            self.times_loading_popup_visible += 1
 
-            if self.current_load_pop_count >= self.MAX_LOAD_POP_COUNT:
-                self.current_load_pop_count = 0
+            if self.times_loading_popup_visible >= self.MAX_TIMES_LOADING_POPUP_VISIBLE:
+                self.times_loading_popup_visible = 0
                 self.current_img_diff_count = 0
 
                 if self.current_state != State.PLAYING_VIDEO:
@@ -222,11 +234,11 @@ class VideoStateMachine:
                 eventPrinter.print_video_connection_interruption(self.text_file, self.possible_loading_popup_appear_time, str(self.new_event_id))
                 self.event_writer.request_instant_event_write(str(self.new_event_id))
                 self.new_event_id += 1
-                self.possible_loading_popup_appear_time = 0
                 self.change_state(State.PAUSED_VIDEO)
+                self.possible_loading_popup_appear_time = 0
         else:
             self.possible_loading_popup_appear_time = 0
-            self.current_load_pop_count = 0
+            self.times_loading_popup_visible = 0
 
     def save_text_file(self):
         self.text_file.close()
@@ -248,7 +260,6 @@ class VideoStateMachine:
             self.event_writer.request_event_write(str(self.new_event_id))
             self.new_event_id += 1
             self.has_lost_video = True
-            # self.change_state(State.SCROLLED_VIDEO)
 
 # !Not implemented!
     def has_video_came_back(self):
@@ -265,21 +276,3 @@ class VideoStateMachine:
 
         else:
             self.current_come_back_count = 0
-
-    def reset_video_parameters(self):
-        self.has_lost_video = False
-        self.scroll_bar_bottom_edge = float('inf')
-
-    def try_remove_frame_skip(self):
-        if self.skip_frame:
-            self.current_frame_skip_count += 1
-
-        if self.current_frame_skip_count >= self.MAX_FRAME_SKIP_COUNT:
-            self.current_frame_skip_count = 0
-            self.skip_frame = False
-
-    def get_current_video_contour(self):
-        return self.SCREEN_CONTOUR if self.is_full_screen else self.video_contour
-
-    def get_no_camera_frame(self, frame):
-        return videoExtensions.get_no_camera_frame(frame, self.FRAME_WIDTH)

@@ -46,7 +46,7 @@ class VideoEventWriter:
 
     def save_video(self, event_id):
         full_video_name = "out\\" + self.video_name + "\\" + event_id + ".mp4"
-        video_frames = self.current_frames[self.BUF_SIZE - 1 - self.event_video_frames_size: self.BUF_SIZE - 1]
+        video_frames = self.current_frames[self.BUF_SIZE - 1 - self.event_video_frames_size:self.BUF_SIZE - 1]
         videoExtensions.save_video_event(video_frames, full_video_name, self.video_resolution)
 
     def instant_save_video(self, event_id):
