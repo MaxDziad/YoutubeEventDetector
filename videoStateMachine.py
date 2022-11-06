@@ -53,7 +53,6 @@ class VideoStateMachine:
     skip_frame = False
     has_lost_video = False
     is_full_screen = False
-    has_loading_popup = False
 
     possible_loading_popup_appear_time = 0
     possible_loading_popup_disappear_time = 0
