@@ -126,7 +126,6 @@ class VideoStateMachine:
         self.check_is_video_starting()
 
     def look_for_interruptions(self):
-        self.has_video_came_back()
         self.check_full_screen_toggle()
         self.check_for_url_change()
         self.check_for_loading_popup()
