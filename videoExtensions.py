@@ -26,7 +26,7 @@ def has_url_bar_changed(previous_frame, next_frame):
 
 
 def is_full_screen_toggled(previous_frame, next_frame):
-    upper_left_point = (1300, 5)
+    upper_left_point = (1260, 5)
     lower_right_point = (1315, 20)
     img_diff = get_img_diff_between_frames(previous_frame, next_frame, [upper_left_point, lower_right_point])
     contours = find_all_contours(img_diff, DetectionType.NORMAL)
