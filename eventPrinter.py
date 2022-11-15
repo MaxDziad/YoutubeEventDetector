@@ -8,7 +8,7 @@ def print_time_title_event(title, time, file, event_id):
     time_message += str(minutes) + "min " if hours > 0 or minutes > 0 else ""
     time_message += str(seconds) + "s"
 
-    full_event = str(event_id) + " - " + title + time_message + "\n"
+    full_event = str(event_id) + ";" + title + ";" + str(time) + ";" + time_message + "\n"
     file.write(full_event)
 
 
